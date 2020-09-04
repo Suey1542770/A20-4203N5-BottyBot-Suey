@@ -4,7 +4,7 @@ package org.Suey.Bot;
  * Hello world!
  *
  */
-public class App 
+public class Sueybot
 {
     public static void main( String[] args )
     {
