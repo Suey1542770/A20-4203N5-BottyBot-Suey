@@ -105,9 +105,8 @@ public class Sueybot
 
     public static String[] WebReader(String[] url) {
         try {
-
-            String[] newList = new String[links.size()]
-            for (String link: url) 
+            String[] newlist= new String[0];
+            for (String link: url)
             {
                 Document doc = Jsoup.connect(link).get();
 
@@ -129,5 +128,16 @@ public class Sueybot
             return new String[0];
         }
 
+    }
+
+    //copy deux table de String forme une seul table avec les deux ancients
+    public static String[] concat(String[] un, String[] deux)
+    {
+
+        String[] total = new String[un.length+deux.length];
+        System.arraycopy(un, 0, total, 0, un.length);
+        System.arraycopy(deux, 0, total, un.length, deux.length);
+
+        return total;
     }
 }
