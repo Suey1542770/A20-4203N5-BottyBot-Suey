@@ -12,6 +12,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Arrays;
+import java.util.List;
 
 
 public class Sueybot
@@ -89,16 +90,24 @@ public class Sueybot
 
         String[][] listURL = new String[profondeur+1][];
         listURL[0] = new String[]{url};
-
+        String[] UrlUtiliser = new String[0];
+        List<String> list =Arrays.asList(UrlUtiliser);
         for (int i=0;i<profondeur;i++)
         {
-            listURL[i+1] = WebReader(listURL[i]);
+            UrlUtiliser = concat(UrlUtiliser, listURL[i]);
+            list = Arrays.asList(UrlUtiliser);
+            listURL[i+1] = WebReader(listURL[i],list);
+
 
         }
+        UrlUtiliser = concat(UrlUtiliser, listURL[profondeur]);
+        list = Arrays.asList(UrlUtiliser);
 
     }
 
-    public static String[] WebReader(String[] url) {
+
+
+    public static String[] WebReader(String[] url, List<String> blacklist) {
 
 
         String[] newlist = new String[0];
@@ -108,33 +117,38 @@ public class Sueybot
 
                 String[] linktext ={};
                 try {
+
                     Document doc = Jsoup.connect(l).get();
                     System.out.println("Exploration de >> " + l);
                     Elements links = doc.select("a");
                     Element[] link = links.toArray(new Element[links.size()]);
                     linktext = new String[link.length];
                     for (int i=0;i<link.length;i++){
-                        if (link[i].absUrl("href").equals("")){
+                        if (blacklist.contains(link[i].attr("href")) || blacklist.contains(link[i].absUrl("href"))){
+
+                        }
+                        else if (link[i].absUrl("href").equals("")){
                             linktext[i] = link[i].attr("href");
                         }
                         else{
                         linktext[i] = link[i].absUrl("href");
                         }
+
                     }
                 } catch (MalformedURLException e) {
-                    System.err.println("URL mal formee http://" + l);
+                    System.err.println("URL mal formee " + l);
 
                 } catch (IOException e) {
                     System.err.println("page inaccesssible "+l);
                 }
                 catch (IllegalArgumentException e) {
-                        System.err.println("URL mal formee http://" + l);
-
+                    if (l != null){
+                        System.err.println("URL mal formee " + l);
+                    }
                 }
 
 
                 newlist = concat(newlist,linktext);
-                System.out.println("hello");
 
         }
         return newlist;
