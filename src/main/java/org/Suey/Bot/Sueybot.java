@@ -85,49 +85,59 @@ public class Sueybot
 
     public  static void webbot(int profondeur,String url, String repo)
     {
-        System.out.println("Exploration de >> " + url);
+
 
         String[][] listURL = new String[profondeur+1][];
         listURL[0] = new String[]{url};
-        WebReader(listURL[0]);
-        for (int i=1;i<profondeur;i++)
-        {
 
-        for (String link: listURL[i])
+        for (int i=0;i<profondeur;i++)
         {
+            listURL[i+1] = WebReader(listURL[i]);
 
         }
-
-}
-        
 
     }
 
     public static String[] WebReader(String[] url) {
-        try {
-            String[] newlist= new String[0];
-            for (String link: url)
+
+
+        String[] newlist = new String[0];
+
+            for (String l: url)
             {
-                Document doc = Jsoup.connect(link).get();
+
+                String[] linktext ={};
+                try {
+                    Document doc = Jsoup.connect(l).get();
+                    System.out.println("Exploration de >> " + l);
+                    Elements links = doc.select("a");
+                    Element[] link = links.toArray(new Element[links.size()]);
+                    linktext = new String[link.length];
+                    for (int i=0;i<link.length;i++){
+                        if (link[i].absUrl("href").equals("")){
+                            linktext[i] = link[i].attr("href");
+                        }
+                        else{
+                        linktext[i] = link[i].absUrl("href");
+                        }
+                    }
+                } catch (MalformedURLException e) {
+                    System.err.println("URL mal formee http://" + l);
+
+                } catch (IOException e) {
+                    System.err.println("page inaccesssible "+l);
+                }
+                catch (IllegalArgumentException e) {
+                        System.err.println("URL mal formee http://" + l);
+
+                }
 
 
+                newlist = concat(newlist,linktext);
+                System.out.println("hello");
 
-            }
-
-
-            for (int i = 0; i < links.size(); i++) {
-                newList[i] = link[i].absUrl("href");
-
-            }
-            return newList;
-        } catch (MalformedURLException e) {
-            System.err.println("L'URL donner dans le deuxième argument n'a pas une forme valid");
-            return new String[0];
-        } catch (IOException e) {
-            System.err.println("error pas pu se connecter");
-            return new String[0];
         }
-
+        return newlist;
     }
 
     //copy deux table de String forme une seul table avec les deux ancients
