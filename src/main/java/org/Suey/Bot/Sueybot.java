@@ -1,5 +1,6 @@
 package org.Suey.Bot;
 
+import com.sun.org.apache.xerces.internal.impl.xpath.regex.Match;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -11,8 +12,9 @@ import java.lang.reflect.Array;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 public class Sueybot
@@ -21,7 +23,7 @@ public class Sueybot
         /**
          *verification du nombre d'argument
          */
-        System.out.println("Bonjour Suey");
+        System.out.println("Bonjour Suey \n");
 
         if  (args.length==3){
 
@@ -58,18 +60,26 @@ public class Sueybot
             }
 
 
-
+            /**
+            * vérifie que les chemin du dossier choisi est valid
+            */
             File file = new File(repo);
-            if (file.exists()){
+            if (!file.exists()){
+                System.out.println("le dossier n'exist pas");
+            }
+            else if(!file.canWrite()){
+                System.out.println("le dossier ne permet pas l'écriture");
+            }
+            else if(!file.canRead()){
+                System.out.println("le dossier n'est pas accessible");
+            }
+            else{
                 /**
                  * Tous les arguments ont été verifier. ont part donc le programs principal
                  */
                 System.out.println("tout va bien, explorons");
 
                 webbot(profondeur, lien, repo);
-            }
-            else{
-                System.out.println("le dossier n'exist pas");
             }
 
         }
@@ -90,31 +100,50 @@ public class Sueybot
 
         String[][] listURL = new String[profondeur+1][];
         listURL[0] = new String[]{url};
-        String[] UrlUtiliser = new String[0];
-        List<String> list =Arrays.asList(UrlUtiliser);
+        Set<String> listEmail = new HashSet<>();
+        String[] UrlUtiliser = {};
+        List<String> list =new ArrayList<>();
+        String[][] retour = new String[2][];
+
+        int nbpage =0;
+
         for (int i=0;i<profondeur;i++)
         {
             UrlUtiliser = concat(UrlUtiliser, listURL[i]);
             list = Arrays.asList(UrlUtiliser);
-            listURL[i+1] = WebReader(listURL[i],list);
-
+             retour = WebReader(listURL[i],list);
+            listURL[i+1] = retour[0];
+            for (String s: retour[1])
+            {
+                listEmail.add(s);
+            }
+            nbpage = nbpage + Integer.parseInt(retour[2][0]);
 
         }
-        UrlUtiliser = concat(UrlUtiliser, listURL[profondeur]);
-        list = Arrays.asList(UrlUtiliser);
+
+
+        //convertie le et en list
+        List<String> emails = Arrays.asList(listEmail.toArray(new String[listEmail.size()]));
+
+
+        Collections.sort(emails,String.CASE_INSENSITIVE_ORDER);
+        System.out.println("\nNombre de page visit: " + nbpage);
+        System.out.println("Nombre de courriels extraits (en ordre alphabetique) : " + listEmail.size());
+        for (String s:listEmail) {System.out.println("\t"+s);}
 
     }
 
 
+    public static String[][] WebReader(String[] url, List<String> blacklist) {
 
-    public static String[] WebReader(String[] url, List<String> blacklist) {
 
-
-        String[] newlist = new String[0];
+        String[] urlList = new String[0];
+        Set<String> emails = new HashSet<String>();
+        int nbpageexplorer =0;
 
             for (String l: url)
             {
-
+                String[] email = {};
                 String[] linktext ={};
                 try {
 
@@ -123,6 +152,12 @@ public class Sueybot
                     Elements links = doc.select("a");
                     Element[] link = links.toArray(new Element[links.size()]);
                     linktext = new String[link.length];
+
+                    Pattern cherche = Pattern.compile("[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+");
+                    Matcher trouve = cherche.matcher(doc.text());
+                    while(trouve.find()){ emails.add(trouve.group()); }
+                    nbpageexplorer++;
+
                     for (int i=0;i<link.length;i++){
                         if (blacklist.contains(link[i].attr("href")) || blacklist.contains(link[i].absUrl("href"))){
 
@@ -148,10 +183,14 @@ public class Sueybot
                 }
 
 
-                newlist = concat(newlist,linktext);
+                urlList = concat(urlList,linktext);
+
 
         }
-        return newlist;
+            String[] nbpage = {Integer.toString(nbpageexplorer)};
+            String[] emailList = emails.toArray(new String[emails.size()]);
+            String[][] result = {urlList,emailList,nbpage};
+            return result;
     }
 
     //copy deux table de String forme une seul table avec les deux ancients
