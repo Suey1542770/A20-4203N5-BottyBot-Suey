@@ -1,17 +1,21 @@
 package org.Suey.Bot;
 
 import com.sun.org.apache.xerces.internal.impl.xpath.regex.Match;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -93,14 +97,17 @@ public class Sueybot
 
 
     }
-
+    //fonctipn intermediare qui s'occupe de gérer les list de liens et des Emails
+    //
     public  static void webbot(int profondeur,String url, String repo)
     {
 
 
         String[][] listURL = new String[profondeur+1][];
+        //tableaux d'Url selon leur profondeur
         listURL[0] = new String[]{url};
         Set<String> listEmail = new HashSet<>();
+        //list de Url déjà parcouru
         String[] UrlUtiliser = {};
         List<String> list =new ArrayList<>();
         String[][] retour = new String[2][];
@@ -109,9 +116,10 @@ public class Sueybot
 
         for (int i=0;i<profondeur;i++)
         {
+
             UrlUtiliser = concat(UrlUtiliser, listURL[i]);
             list = Arrays.asList(UrlUtiliser);
-             retour = WebReader(listURL[i],list);
+             retour = WebReader(listURL[i],list, repo);
             listURL[i+1] = retour[0];
             for (String s: retour[1])
             {
@@ -122,10 +130,10 @@ public class Sueybot
         }
 
 
-        //convertie le et en list
+        //convertie le set en list
         List<String> emails = Arrays.asList(listEmail.toArray(new String[listEmail.size()]));
 
-
+        //triage des courriels sans prendre comptes des majescules
         Collections.sort(emails,String.CASE_INSENSITIVE_ORDER);
         System.out.println("\nNombre de page visit: " + nbpage);
         System.out.println("Nombre de courriels extraits (en ordre alphabetique) : " + listEmail.size());
@@ -134,7 +142,7 @@ public class Sueybot
     }
 
 
-    public static String[][] WebReader(String[] url, List<String> blacklist) {
+    public static String[][] WebReader(String[] url, List<String> blacklist,String repo) {
 
 
         String[] urlList = new String[0];
@@ -149,15 +157,55 @@ public class Sueybot
 
                     Document doc = Jsoup.connect(l).get();
                     System.out.println("Exploration de >> " + l);
+                    //on augmente le compteur de page parcouru successivement
+                    nbpageexplorer++;
+
+                    //on parcour le document pour des courriels avec un format valid
+                    Pattern cherche = Pattern.compile("[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+");
+                    Matcher trouve = cherche.matcher(doc.text());
+
+                    //les courriels trouver sont rajouter a un set
+                    while(trouve.find())
+                    {
+                        emails.add(trouve.group());
+
+                    }
+
+
+                    //avec le liens ont trouve le chemin absolu
+                    URL Urlcurrent = new URL(l);
+                    String p ="";
+                    for (String s : Urlcurrent.getPath().split("/")) {
+                        p = p +'\\' + s;
+                        String path =repo + p ;
+
+
+                        if (path.contains(".html"))
+                        {
+                            //si la section fait reference a un fichier html on sauvgarde le fichier dans le bon dossier
+                            String text = doc.html().replace("[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+","FakeNews@email.com");
+                            File file = new File(path);
+                            FileWriter writeFile = new FileWriter(file);
+                            writeFile.write(text);
+                            writeFile.close();
+                        }
+                        //pour chaque section du chemin ont creer un dossier s'il n'existe pas déjà
+                        else if(!Files.exists(Paths.get(path))){
+                           File file = new File(path);
+                           file.mkdir();
+                        }
+
+
+                    }
+
+
+                    //on parcour le document et on extrait tous les liens
                     Elements links = doc.select("a");
                     Element[] link = links.toArray(new Element[links.size()]);
                     linktext = new String[link.length];
 
-                    Pattern cherche = Pattern.compile("[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+");
-                    Matcher trouve = cherche.matcher(doc.text());
-                    while(trouve.find()){ emails.add(trouve.group()); }
-                    nbpageexplorer++;
 
+                    //on vérifie que le lien na pas déjà été parcouru
                     for (int i=0;i<link.length;i++){
                         if (blacklist.contains(link[i].attr("href")) || blacklist.contains(link[i].absUrl("href"))){
 
@@ -170,6 +218,9 @@ public class Sueybot
                         }
 
                     }
+
+
+                    //dans le cas d'un url mal former ou non accessible ont affiche le message approprié, dans le cas d'un url vide, on l'ignore et on passe au suivant
                 } catch (MalformedURLException e) {
                     System.err.println("URL mal formee " + l);
 
@@ -182,18 +233,19 @@ public class Sueybot
                     }
                 }
 
-
+                //on rassemble tous les liens trouver dans la même profondeur et ont la mets dans un tableau
                 urlList = concat(urlList,linktext);
 
 
         }
+            //conversion de l'information obtenu en string pour pouvoir tout retourner ensemble
             String[] nbpage = {Integer.toString(nbpageexplorer)};
             String[] emailList = emails.toArray(new String[emails.size()]);
             String[][] result = {urlList,emailList,nbpage};
             return result;
     }
 
-    //copy deux table de String forme une seul table avec les deux ancients
+    //fonction pour concaténer deux tableaux de string ensemble
     public static String[] concat(String[] un, String[] deux)
     {
 
